@@ -1,4 +1,5 @@
 use crate::{LookAngles, LookTransform, LookTransformBundle, Smoother};
+use super::{set_default_input_behavior, should_consume_input};
 
 use bevy::{
     app::prelude::*,
@@ -17,9 +18,14 @@ pub struct OrbitCameraPlugin;
 
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_system(default_input_map.system())
+        app.add_startup_system(set_default_input_behavior.system())
             .add_system(control_system.system())
-            .add_event::<ControlEvent>();
+            .add_event::<ControlEvent>()
+            .add_system_set(
+                SystemSet::new()
+                    .with_run_criteria(should_consume_input.system())
+                    .with_system(default_input_map.system())
+            );
     }
 }
 
@@ -80,6 +86,8 @@ pub enum ControlEvent {
     TranslateTarget(Vec2),
     Zoom(f32),
 }
+
+pub struct DisableDefaultInput;
 
 pub fn default_input_map(
     mut events: EventWriter<ControlEvent>,
