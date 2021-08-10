@@ -13,13 +13,28 @@ use serde::{Deserialize, Serialize};
 pub struct FpsCameraPlugin;
 
 impl Plugin for FpsCameraPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.add_system(default_input_map.system())
+    fn build(
+        &self,
+        app: &mut AppBuilder,
+    ) {
+        app.add_system(default_mouse_input_map.system())
+            .add_system(default_keyboard_input_map.system())
             .add_system(control_system.system())
             .add_event::<ControlEvent>();
     }
 }
 
+pub struct FpsCameraControlPlugin;
+
+impl Plugin for FpsCameraControlPlugin {
+    fn build(
+        &self,
+        app: &mut AppBuilder,
+    ) {
+        app.add_system(control_system.system())
+            .add_event::<ControlEvent>();
+    }
+}
 #[derive(Bundle)]
 pub struct FpsCameraBundle {
     controller: FpsCameraController,
@@ -75,9 +90,9 @@ pub enum ControlEvent {
     TranslateEye(Vec3),
 }
 
-pub fn default_input_map(
+pub fn default_mouse_input_map(
     mut events: EventWriter<ControlEvent>,
-    keyboard: Res<Input<KeyCode>>,
+    // keyboard: Res<Input<KeyCode>>,
     mut mouse_motion_events: EventReader<MouseMotion>,
     controllers: Query<&FpsCameraController>,
 ) {
@@ -89,7 +104,6 @@ pub fn default_input_map(
     };
     let FpsCameraController {
         enabled,
-        translate_sensitivity,
         mouse_rotate_sensitivity,
         ..
     } = *controller;
@@ -106,6 +120,29 @@ pub fn default_input_map(
     events.send(ControlEvent::Rotate(
         mouse_rotate_sensitivity * cursor_delta,
     ));
+}
+
+pub fn default_keyboard_input_map(
+    mut events: EventWriter<ControlEvent>,
+    controllers: Query<&FpsCameraController>,
+    keyboard: Res<Input<KeyCode>>,
+) {
+    // Can only control one camera at a time.
+    let controller = if let Some(controller) = controllers.iter().next() {
+        controller
+    } else {
+        return;
+    };
+
+    let FpsCameraController {
+        enabled,
+        translate_sensitivity,
+        ..
+    } = *controller;
+
+    if !enabled {
+        return;
+    }
 
     for (key, dir) in [
         (KeyCode::W, Vec3::Z),
